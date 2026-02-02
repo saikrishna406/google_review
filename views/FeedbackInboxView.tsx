@@ -1,16 +1,37 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Feedback } from '../types';
 import Layout from '../components/Layout';
 import { Icons } from '../constants';
 
-const mockFeedback: Feedback[] = [
-  { id: '1', customerName: 'Mike Ross', rating: 2, comment: "Wait time was too long at the counter. Front desk was distracted.", date: '2024-05-11', status: 'new' },
-  { id: '2', customerName: 'Sarah Jenkins', rating: 3, comment: "Product quality didn't meet expectations based on price point.", date: '2024-05-10', status: 'responded' },
-  { id: '3', customerName: 'Peter Quill', rating: 1, comment: "I received the wrong item twice in a row. Very frustrating.", date: '2024-05-09', status: 'new' },
-];
+// Mock data removed in favor of API calls
 
 const FeedbackInboxView: React.FC = () => {
+  const [feedbackList, setFeedbackList] = useState<Feedback[]>([]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    // Assuming we will add GET /api/feedback or similar to backend
+    // For now, let's try to fetch it from a new endpoint we'll create
+    fetch('http://localhost:5000/api/feedback', {
+      headers: { 'x-access-token': token || '' }
+    })
+      .then(res => res.json())
+      .then(data => {
+        // Transform if necessary
+        const mapped = data.feedback ? data.feedback.map((f: any) => ({
+          id: f.id,
+          customerName: 'Anonymous', // Feedback often anonymous unless linked
+          rating: 0, // Need to join with rating event in backend to get this
+          comment: f.message,
+          date: 'Recent',
+          status: 'new'
+        })) : [];
+        setFeedbackList(mapped);
+      })
+      .catch(err => console.error('Error fetching feedback:', err));
+  }, []);
+
   return (
     <Layout title="Feedback Terminal">
       <div className="max-w-5xl mx-auto space-y-10 text-left">
@@ -26,7 +47,9 @@ const FeedbackInboxView: React.FC = () => {
         </header>
 
         <div className="space-y-6">
-          {mockFeedback.map((fb) => (
+          {feedbackList.length === 0 ? (
+            <div className="p-10 text-center text-slate-500 font-medium">No feedback received yet.</div>
+          ) : feedbackList.map((fb) => (
             <div key={fb.id} className="bg-white p-10 rounded-[2.5rem] border border-slate-200/50 shadow-premium flex flex-col md:flex-row md:items-start justify-between gap-8 group hover:border-orange-500/50 transition-all">
               <div className="flex-1">
                 <div className="flex items-center gap-4 mb-4">

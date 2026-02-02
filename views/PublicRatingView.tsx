@@ -2,36 +2,77 @@
 import React, { useState } from 'react';
 import { Icons } from '../constants';
 
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 
 const PublicRatingView: React.FC = () => {
   const { businessId } = useParams();
+  const [searchParams] = useSearchParams();
+  const requestId = searchParams.get('rid'); // Assuming we pass ?rid=... in the link
+
   const [rating, setRating] = useState<number>(0);
   const [hoveredRating, setHoveredRating] = useState<number>(0);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [comment, setComment] = useState('');
   const [contact, setContact] = useState('');
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const [businessName, setBusinessName] = useState('Loading...');
+  const [googleUrl, setGoogleUrl] = useState('https://maps.google.com');
+  const [ratingEventId, setRatingEventId] = useState<string | null>(null);
 
-  // Mock business lookup
-  const businessName = businessId ?
-    businessId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
-    : "Blue Bottle Coffee";
+  React.useEffect(() => {
+    if (businessId) {
+      fetch(`http://localhost:5000/api/rate/${businessId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.business_name) {
+            setBusinessName(data.business_name);
+            setGoogleUrl(data.google_review_url);
+          }
+        })
+        .catch(err => setBusinessName('Business Not Found'));
+    }
+  }, [businessId]);
 
-  const handleRatingSelect = (selectedRating: number) => {
-    setRating(selectedRating);
-    if (selectedRating >= 5) {
-      // Logic for 5 stars: Redirect to Google
-      // In this demo, we show a success state with a redirect button
-    } else {
-      // Logic for 1-4 stars: Show feedback form
-      setShowFeedbackForm(true);
+  const handleRatingSelect = async (selectedRating: number) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/rate/${businessId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stars: selectedRating,
+          request_id: requestId
+        })
+      });
+      const data = await res.json();
+
+      setRating(selectedRating);
+      if (data.redirect) {
+        setGoogleUrl(data.url); // Prepare URL (or auto redirect if preferred)
+      } else if (data.feedback_form) {
+        setRatingEventId(data.rating_event_id);
+        setShowFeedbackForm(true);
+      }
+    } catch (err) {
+      console.error("Error submitting rating", err);
     }
   };
 
-  const handleSubmitFeedback = (e: React.FormEvent) => {
+  const handleSubmitFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFeedbackSubmitted(true);
+    try {
+      await fetch('http://localhost:5000/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rating_event_id: ratingEventId,
+          message: comment,
+          contact_optional: contact
+        })
+      });
+      setFeedbackSubmitted(true);
+    } catch (err) {
+      console.error("Error submitting feedback", err);
+    }
   };
 
   if (feedbackSubmitted) {
@@ -59,7 +100,7 @@ const PublicRatingView: React.FC = () => {
           Could you take 30 seconds to share your experience on Google? It helps others find us.
         </p>
         <a
-          href="https://maps.google.com"
+          href={googleUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="bg-slate-950 text-white px-12 py-5 rounded-2xl text-xl font-bold hover:bg-slate-800 transition-all shadow-stripe hover:-translate-y-1"

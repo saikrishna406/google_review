@@ -8,6 +8,50 @@ const OnboardingView: React.FC = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const totalSteps = 3;
+  const [formData, setFormData] = useState({
+    name: '',
+    industry: '',
+    googleUrl: '',
+    phone: '',
+    delay: '0'
+  });
+  const [isSaving, setIsSaving] = useState(false);
+
+  const updateForm = (key: string, value: string) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:5000/api/business', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-access-token': token || ''
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          industry: formData.industry,
+          google_review_url: formData.googleUrl,
+          // Passing other fields if backend supports them later, currently backend expects name, url, industry
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        navigate('/dashboard');
+      } else {
+        alert('Failed to save business: ' + data.message);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error saving business details');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const renderStep = () => {
     switch (step) {
@@ -16,11 +60,21 @@ const OnboardingView: React.FC = () => {
           <div className="space-y-8 text-left">
             <div>
               <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Legal Business Name</label>
-              <input type="text" placeholder="e.g. Blue Bottle Coffee" className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-orange-500/10 outline-none transition-all font-medium" />
+              <input
+                type="text"
+                value={formData.name}
+                onChange={e => updateForm('name', e.target.value)}
+                placeholder="e.g. Blue Bottle Coffee"
+                className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-orange-500/10 outline-none transition-all font-medium"
+              />
             </div>
             <div>
               <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Industry</label>
-              <select className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-orange-500/10 outline-none transition-all font-medium appearance-none">
+              <select
+                value={formData.industry}
+                onChange={e => updateForm('industry', e.target.value)}
+                className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-orange-500/10 outline-none transition-all font-medium appearance-none"
+              >
                 <option value="">Select Industry</option>
                 <option value="retail">Retail</option>
                 <option value="hospitality">Hospitality</option>
@@ -31,7 +85,13 @@ const OnboardingView: React.FC = () => {
             </div>
             <div>
               <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Google Maps URL</label>
-              <input type="text" placeholder="https://maps.google.com/..." className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-orange-500/10 outline-none transition-all font-medium" />
+              <input
+                type="text"
+                value={formData.googleUrl}
+                onChange={e => updateForm('googleUrl', e.target.value)}
+                placeholder="https://maps.google.com/..."
+                className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-orange-500/10 outline-none transition-all font-medium"
+              />
               <p className="mt-3 text-xs text-slate-400 font-medium">This is where we'll direct your happy 5-star customers.</p>
             </div>
           </div>
@@ -50,7 +110,11 @@ const OnboardingView: React.FC = () => {
             </div>
             <div>
               <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Time Delay (Before Sending)</label>
-              <select className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-orange-500/10 outline-none transition-all font-medium appearance-none">
+              <select
+                value={formData.delay}
+                onChange={e => updateForm('delay', e.target.value)}
+                className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-orange-500/10 outline-none transition-all font-medium appearance-none"
+              >
                 <option value="0">Immediate</option>
                 <option value="1h">1 Hour (Recommended)</option>
                 <option value="1d">1 Day</option>
@@ -61,7 +125,13 @@ const OnboardingView: React.FC = () => {
               <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Business Phone Number</label>
               <div className="flex gap-4">
                 <input type="text" placeholder="+1" className="w-24 px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 font-medium outline-none" />
-                <input type="text" placeholder="555-0123" className="flex-1 px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 font-medium outline-none" />
+                <input
+                  type="text"
+                  value={formData.phone}
+                  onChange={e => updateForm('phone', e.target.value)}
+                  placeholder="555-0123"
+                  className="flex-1 px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 font-medium outline-none"
+                />
               </div>
             </div>
           </div>
@@ -121,10 +191,11 @@ const OnboardingView: React.FC = () => {
             Back
           </button>
           <button
-            onClick={() => step < 3 ? setStep(step + 1) : navigate('/dashboard')}
+            onClick={() => step < 3 ? setStep(step + 1) : handleSave()}
+            disabled={isSaving}
             className="bg-orange-600 text-white px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-orange-700 transition-all shadow-premium"
           >
-            {step === 3 ? 'Finish Setup' : 'Continue'}
+            {isSaving ? 'Connecting...' : (step === 3 ? 'Finish Setup' : 'Continue')}
           </button>
         </div>
       </div>

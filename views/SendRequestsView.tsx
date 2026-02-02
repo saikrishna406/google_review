@@ -8,9 +8,36 @@ const SendRequestsView: React.FC = () => {
   const [tab, setTab] = useState<'single' | 'bulk'>('single');
   const [success, setSuccess] = useState(false);
 
-  const handleSend = () => {
-    setSuccess(true);
-    setTimeout(() => setSuccess(false), 3000);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+
+  const handleSend = async () => {
+    if (!name || !phone) return;
+
+    try {
+      const res = await fetch('http://localhost:5000/api/review/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-access-token': localStorage.getItem('token') || ''
+        },
+        body: JSON.stringify({
+          business_id: localStorage.getItem('user_id'), // Use real user ID from login
+          customer_name: name,
+          customer_phone: phone
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setSuccess(true);
+        setName('');
+        setPhone('');
+        setTimeout(() => setSuccess(false), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to send request', err);
+    }
   };
 
   return (
@@ -50,11 +77,23 @@ const SendRequestsView: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Customer Name</label>
-                <input type="text" placeholder="John Doe" className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white outline-none focus:ring-4 focus:ring-orange-500/10 transition-all font-medium" />
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="John Doe"
+                  className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white outline-none focus:ring-4 focus:ring-orange-500/10 transition-all font-medium"
+                />
               </div>
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">WhatsApp Number</label>
-                <input type="text" placeholder="+1 555 123 4567" className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white outline-none focus:ring-4 focus:ring-orange-500/10 transition-all font-medium" />
+                <input
+                  type="text"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+1 555 123 4567"
+                  className="w-full px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white outline-none focus:ring-4 focus:ring-orange-500/10 transition-all font-medium"
+                />
               </div>
             </div>
             <div className="mb-10">
